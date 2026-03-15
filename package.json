@@ -1,0 +1,125 @@
+{
+  "name": "vscode-agent-bmm",
+  "displayName": "Agent BMM",
+  "description": "GPU-accelerated coding agent — connects to agent-bmm serve via WebSocket",
+  "version": "0.1.0",
+  "publisher": "complexity-ml",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Complexity-ML/vscode-agent-bmm"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Machine Learning", "Other"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "agentBmm.connect",
+        "title": "Agent BMM: Connect to Server"
+      },
+      {
+        "command": "agentBmm.disconnect",
+        "title": "Agent BMM: Disconnect"
+      },
+      {
+        "command": "agentBmm.openChat",
+        "title": "Agent BMM: Open Chat Panel"
+      },
+      {
+        "command": "agentBmm.askAgent",
+        "title": "Agent BMM: Ask Agent About Selection"
+      },
+      {
+        "command": "agentBmm.refactor",
+        "title": "Agent BMM: Refactor Selection"
+      },
+      {
+        "command": "agentBmm.addTests",
+        "title": "Agent BMM: Add Tests for Selection"
+      },
+      {
+        "command": "agentBmm.explain",
+        "title": "Agent BMM: Explain Selection"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "agentBmm.askAgent",
+          "group": "agentBmm@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "agentBmm.refactor",
+          "group": "agentBmm@2",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "agentBmm.addTests",
+          "group": "agentBmm@3",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "agentBmm.explain",
+          "group": "agentBmm@4",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "agent-bmm",
+          "title": "Agent BMM",
+          "icon": "$(hubot)"
+        }
+      ]
+    },
+    "views": {
+      "agent-bmm": [
+        {
+          "type": "webview",
+          "id": "agentBmm.chatPanel",
+          "name": "Chat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Agent BMM",
+      "properties": {
+        "agentBmm.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:8765",
+          "description": "WebSocket URL of the agent-bmm server"
+        },
+        "agentBmm.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Auto-connect to server when VS Code opens"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
