@@ -21,7 +21,7 @@ let fileDecorations: AgentFileDecorationProvider;
 
 async function connectToServer(url: string): Promise<void> {
   client.disconnect();
-  (client as any).url = url; // update URL
+  client.url = url;
   await client.connect();
   statusBar.update();
 }
@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const serverUrl = config.get<string>("serverUrl", "ws://localhost:8765");
 
   // Update client URL from config
-  (client as any).url = serverUrl;
+  client.url = serverUrl;
 
   // Status bar
   statusBar = new StatusBarManager(client);
@@ -103,8 +103,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Auto-connect
   if (config.get<boolean>("autoConnect", true)) {
-    connectToServer(serverUrl).catch(() => {
-      // Server not running — silent fail
+    connectToServer(serverUrl).then(() => {
+      vscode.window.showInformationMessage(`Agent BMM: connected to ${serverUrl}`);
+    }).catch(() => {
+      // Server not running — silent, user can connect manually
     });
   }
 }

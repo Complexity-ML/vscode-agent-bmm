@@ -21,7 +21,7 @@ export interface AgentEvent {
 
 export class AgentClient extends EventEmitter {
   private ws: WebSocket | null = null;
-  private url: string;
+  public url: string;
   private reconnectTimer: NodeJS.Timeout | null = null;
 
   constructor(url: string = "ws://localhost:8765") {
@@ -34,10 +34,23 @@ export class AgentClient extends EventEmitter {
   }
 
   async connect(): Promise<void> {
+    this.disconnect(); // clean up any existing connection
+
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(this.url);
+      try {
+        this.ws = new WebSocket(this.url);
+      } catch (err) {
+        reject(err);
+        return;
+      }
+
+      const timeout = setTimeout(() => {
+        this.ws?.close();
+        reject(new Error(`Connection timeout to ${this.url}`));
+      }, 10000);
 
       this.ws.on("open", () => {
+        clearTimeout(timeout);
         this.emit("connected");
         resolve();
       });
@@ -58,6 +71,7 @@ export class AgentClient extends EventEmitter {
       });
 
       this.ws.on("error", (err: Error) => {
+        clearTimeout(timeout);
         this.emit("error", err);
         reject(err);
       });
