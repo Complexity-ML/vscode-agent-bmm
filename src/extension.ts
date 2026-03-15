@@ -13,16 +13,25 @@ import { registerCodeActions } from "./providers/codeActions";
 import { StatusBarManager } from "./providers/statusBar";
 import { AgentFileDecorationProvider } from "./providers/fileDecorations";
 
-let client: AgentClient;
+/** Shared client — single instance, reconnectable. */
+const client = new AgentClient();
+
 let statusBar: StatusBarManager;
 let fileDecorations: AgentFileDecorationProvider;
+
+async function connectToServer(url: string): Promise<void> {
+  client.disconnect();
+  (client as any).url = url; // update URL
+  await client.connect();
+  statusBar.update();
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = vscode.workspace.getConfiguration("agentBmm");
   const serverUrl = config.get<string>("serverUrl", "ws://localhost:8765");
 
-  // Create client
-  client = new AgentClient(serverUrl);
+  // Update client URL from config
+  (client as any).url = serverUrl;
 
   // Status bar
   statusBar = new StatusBarManager(client);
@@ -34,7 +43,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerFileDecorationProvider(fileDecorations)
   );
 
-  // Chat panel
+  // Chat panel — uses the shared client
   const chatProvider = new ChatPanelProvider(context.extensionUri, client);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(ChatPanelProvider.viewType, chatProvider)
@@ -54,10 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!url) return;
 
       try {
-        client.disconnect();
-        client = new AgentClient(url);
-        await client.connect();
-        statusBar = new StatusBarManager(client);
+        await connectToServer(url);
         vscode.window.showInformationMessage(`Connected to ${url}`);
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to connect: ${err.message}`);
@@ -69,6 +75,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("agentBmm.disconnect", () => {
       client.disconnect();
+      statusBar.update();
       vscode.window.showInformationMessage("Disconnected from Agent BMM");
     })
   );
@@ -80,20 +87,11 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
-  // Auto-connect
-  if (config.get<boolean>("autoConnect", true)) {
-    client.connect().catch(() => {
-      // Server not running — silent fail, user can connect manually
-    });
-  }
-
   // Listen for agent file modifications
   client.on("tool_result", (msg: any) => {
     if (msg.tool === "write" || msg.tool === "edit") {
-      // Try to find the file URI and mark it
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
       if (workspaceFolder && msg.result) {
-        // Parse file path from result (e.g., "Written 42 chars to hello.py")
         const match = msg.result.match(/(?:Written|Edited)\s+.*?(?:to\s+)?(\S+\.?\w+)/);
         if (match) {
           const fileUri = vscode.Uri.joinPath(workspaceFolder.uri, match[1]);
@@ -102,8 +100,15 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     }
   });
+
+  // Auto-connect
+  if (config.get<boolean>("autoConnect", true)) {
+    connectToServer(serverUrl).catch(() => {
+      // Server not running — silent fail
+    });
+  }
 }
 
 export function deactivate(): void {
-  client?.disconnect();
+  client.disconnect();
 }
